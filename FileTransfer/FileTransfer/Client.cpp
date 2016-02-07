@@ -1,0 +1,189 @@
+#include "Client.h"
+SOCKADDR_IN				InternetAddr;		/* For handling internet addresses	*/
+void ClientManager(WPARAM wParam)
+{
+	/* Check which protocol is being selected */
+	CurrentProtocol = (IsDlgButtonChecked(hDlg, IDC_TCP) == BST_CHECKED) ? TCP : UDP;
+	if (LOWORD(wParam) == IDC_SEND && HIWORD(wParam) == BN_CLICKED)
+	{
+		WSACleanup();
+		SetWindowText(hStatus, "Client Initialized...\n");
+		Client();
+	}
+}
+
+void Client()
+{
+	char ip[256];
+	char port[256];
+	WSADATA					wsaData;			/* Session info						*/
+	SOCKET					WritingSocket;		/* Socket for handling connection	*/
+	HANDLE					ClientThreadHandle;
+	DWORD					ClientThreadID;	
+	SOCKADDR_IN				ClientAddr;
+	/* Create a WSA v2.2 session */
+	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0)
+	{
+		sprintf(StrBuff, "WSAStartup() failed with error %d\n", WSAGetLastError());
+		AppendToStatus(hStatus, StrBuff);
+		return;
+	}
+
+	/* Create socket for writing based on currently selected protocol */
+	if ((WritingSocket = socket(AF_INET, (CurrentProtocol == TCP) ? SOCK_STREAM : SOCK_DGRAM, 
+		(CurrentProtocol == TCP) ? IPPROTO_TCP : IPPROTO_UDP)) == INVALID_SOCKET)
+	{
+		sprintf(StrBuff, "WSASocket() failed with error %d\n", WSAGetLastError());
+		AppendToStatus(hStatus, StrBuff);
+		return;
+	}
+
+	/* Initialize address structure */
+	GetWindowText(hIP, ip, 256);
+	GetWindowText(hPort, port, 256);
+	InternetAddr.sin_family = AF_INET;
+	InternetAddr.sin_addr.s_addr = inet_addr(ip);
+	InternetAddr.sin_port = htons(atoi(port));
+
+
+	/* Connect based on which protocol is currently selected */
+	if (CurrentProtocol == TCP && S_TCPConnect(WritingSocket, &InternetAddr) == FALSE)
+	{
+		sprintf(StrBuff, "WSAConnect() failed with error %d\n", WSAGetLastError());
+		AppendToStatus(hStatus, StrBuff);
+		return;
+	}else
+	if (CurrentProtocol == UDP && S_UDPConnect(WritingSocket, &ClientAddr) == FALSE)
+	{
+		sprintf(StrBuff, "bind() failed with error %d\n", WSAGetLastError());
+		AppendToStatus(hStatus, StrBuff);
+		return;
+	}
+
+	sprintf(StrBuff, "Connected! Server: %s, Port: %s\n", ip, port);
+	AppendToStatus(hStatus, StrBuff);
+
+	/* Create thread to handle transmission */
+	if ((ClientThreadHandle = CreateThread(NULL, 0, ClientThread, (LPVOID)WritingSocket,
+		0, &ClientThreadID)) == NULL)
+	{
+		sprintf(StrBuff, "CreateThread() on ClientThread failed with error %d\n", GetLastError());
+		AppendToStatus(hStatus, StrBuff);
+		return;
+	}
+}
+
+DWORD WINAPI ClientThread(LPVOID lpParameter)
+{
+	SOCKET					WritingSocket;
+	LPSOCKET_INFORMATION	SocketInfo;
+	CHAR					PacketSize[8];
+	CHAR					SendTimes[8];
+
+	/* Retrieve values from window */
+	GetWindowText(hPSize, PacketSize, 8);
+	GetWindowText(hPNum, SendTimes, 8);
+
+	WritingSocket =  (SOCKET)lpParameter;
+
+	/* Create socket information struct to associate with the acepted socket */
+	if ((SocketInfo = (LPSOCKET_INFORMATION)GlobalAlloc(GPTR, sizeof(SOCKET_INFORMATION)))
+		== NULL)
+	{
+		sprintf(StrBuff, "GlobalAlloc() failed with error %d\n", WSAGetLastError());
+		AppendToStatus(hStatus, StrBuff);
+		return FALSE;
+	}
+	
+	/* Initialize socket info struc	*/
+	SocketInfo->Socket = WritingSocket;
+
+	SendInitialMessage(SocketInfo, PacketSize, SendTimes);
+
+	/* Transmit dummy packets */
+	SendPackets(SocketInfo, atoi(SendTimes), atoi(PacketSize));
+
+	GlobalFree(SocketInfo);
+	return TRUE;
+}
+
+void SendInitialMessage(LPSOCKET_INFORMATION SOCKET_INFO, char * PacketSize, char * SendTimes)
+{
+	/* zero out overlapped structure	*/
+	std::string buffer = (char *)MakeInitMessage(PacketSize, SendTimes).c_str();
+	FillSockInfo(SOCKET_INFO, &buffer, strlen(buffer.c_str()));
+
+	/* Different send methods based on the current protocol */
+	if ((CurrentProtocol == TCP ? S_TCPSend(SOCKET_INFO) :
+		S_UDPSend(SOCKET_INFO, &InternetAddr)) == FALSE)
+	{
+		sprintf(StrBuff, "WSASend() failed with error %d\n", WSAGetLastError());
+		AppendToStatus(hStatus, StrBuff);
+		return;
+	}
+}
+
+void SendPackets(LPSOCKET_INFORMATION SOCKET_INFO, DWORD Total, DWORD PacketSize)
+{
+
+	/* zero out overlapped structure	*/
+	std::string buffer = (char *)GetDummyPacket(PacketSize).c_str();
+	FillSockInfo(SOCKET_INFO, &buffer, PacketSize);
+
+	for (int i = 0; i < Total; i++)
+	{
+
+		sprintf(StrBuff, "Sending Packet... Size:  %d\n", strlen(SOCKET_INFO->DataBuf.buf));
+		AppendToStatus(hStatus, StrBuff);
+
+		/* Different send methods based on the current protocol */
+		if ((CurrentProtocol == TCP ? S_TCPSend(SOCKET_INFO) : 
+			S_UDPSend(SOCKET_INFO, &InternetAddr)) == FALSE)
+		{
+			sprintf(StrBuff, "WSASend() failed with error %d\n", WSAGetLastError());
+			AppendToStatus(hStatus, StrBuff);
+			return;
+		}
+	}
+	/* Initialize a null packet */
+	SOCKET_INFO->DataBuf.len = 1;
+	SOCKET_INFO->DataBuf.buf = "\0";
+
+	/* Post a message back to the socket to indicate end of transmission */
+	if ((CurrentProtocol == TCP ? S_TCPSend(SOCKET_INFO) :
+		S_UDPSend(SOCKET_INFO, &InternetAddr)) == FALSE)
+	{
+		sprintf(StrBuff, "WSASend() failed with error %d\n", WSAGetLastError());
+		AppendToStatus(hStatus, StrBuff);
+		return;
+	}
+	closesocket(SOCKET_INFO->Socket);
+	AppendToStatus(hStatus, "End of Transmission...Closing session\n");
+}
+
+std::string MakeInitMessage(char * PacketSize, char * SendTimes)
+{
+	std::string message;
+	message += PacketSize;
+	message += '.';
+	message += SendTimes;
+	return message;
+}
+
+std::string GetDummyPacket(const int size)
+{
+	std::string packet;
+	for (int i = 0; i < size; i++)
+		packet += 'z';
+	return packet;
+}
+
+void FillSockInfo(LPSOCKET_INFORMATION SOCKET_INFO, std::string * buffer, DWORD PacketSize)
+{
+	/* zero out overlapped structure	*/
+	ZeroMemory((&SOCKET_INFO->Overlapped), sizeof(WSAOVERLAPPED));
+	SOCKET_INFO->BytesRECV = 0;
+	SOCKET_INFO->BytesSEND = 0;
+	SOCKET_INFO->DataBuf.len = PacketSize;
+	SOCKET_INFO->DataBuf.buf = (char *)buffer->c_str();
+}

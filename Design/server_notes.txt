@@ -1,0 +1,28 @@
+Main thread:
+WSAStartup()
+Create socket for listening
+	WSASocket()
+Initialize SOCKADDR_IN structure
+	set values..
+bind address to socket
+	bind()
+listens for connection
+create dummy event object
+create a worker thread to service completed I/O (pass in dummy event object)
+while connected
+	accept client
+	accept()
+	signale event in worker thread that a client has been connected
+
+Worker Thread (takes in an event):
+save the accept event in the event array
+wait for accept call in the main thread, and also process WorkerRoutine() returns
+create a socket information structure to associate with the accepeted socket
+	initialize and fill the variables in accepted socket
+post a recieve call and pass in the completion routine
+	WSARecv()
+
+CallBack Completion Routine
+Cast overlapped structure as a SOCKET_INFORMATION structure
+check if BytesRECV is zero
+	
