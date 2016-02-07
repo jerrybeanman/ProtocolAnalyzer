@@ -11,7 +11,7 @@ void ClientManager(WPARAM wParam)
 		Client();
 	}
 }
-
+ 
 void Client()
 {
 	char ip[256];
