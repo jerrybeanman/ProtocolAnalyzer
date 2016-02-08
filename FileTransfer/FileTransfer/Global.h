@@ -14,6 +14,10 @@
 #define DEFAULT_PORT	7000
 #define DATA_BUFSIZE	40000
 
+#include <iostream>
+#include <sstream>
+#include <math.h>
+#include <limits.h>
 #include <WinSock2.h>
 #include <string>
 #include "resource1.h"
@@ -78,7 +82,8 @@ extern HWND hPSize;					/* owner window */
 extern HWND hPNum;					/* owner window */
 extern HWND hStatus;
 extern HWND hFilename;				/* owner window */
-extern HWND hFileIO;				/* owner window */
+extern HWND hOpenFile;				/* owner window */
+extern HWND hSendFile;
 extern HWND hConnect;				/* owner window */
 extern HWND hCombA;
 

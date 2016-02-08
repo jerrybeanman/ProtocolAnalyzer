@@ -10,9 +10,8 @@ DWORD CurrentSelectedInputType;
 
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hprevInstance,
-	LPSTR lspszCmdParam, int nCmdShow) {
-
-
+	LPSTR lspszCmdParam, int nCmdShow) 
+{
 
 	/* Sets the dialog box defined in Reource file as the main window */
 	hDlg = CreateDialogParam(hInst, MAKEINTRESOURCE(IDD_DIALOG1), 0, WndProc, 0);
@@ -67,12 +66,6 @@ INT_PTR CALLBACK WndProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				ShowWindow(hIP, SW_SHOW);
 				break;
 			}
-		}
-
-		/* if send file is being pressed */
-		if (LOWORD(wParam) == IDC_FILE && HIWORD(wParam) == BN_CLICKED)
-		{
-			FileManager();
 		}
 		break;
 	}

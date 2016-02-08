@@ -1,14 +1,40 @@
 #include "Client.h"
 SOCKADDR_IN				InternetAddr;		/* For handling internet addresses	*/
+BOOL					isSendFile;
 void ClientManager(WPARAM wParam)
 {
 	/* Check which protocol is being selected */
 	CurrentProtocol = (IsDlgButtonChecked(hDlg, IDC_TCP) == BST_CHECKED) ? TCP : UDP;
 	if (LOWORD(wParam) == IDC_SEND && HIWORD(wParam) == BN_CLICKED)
 	{
+		isSendFile = FALSE;
 		WSACleanup();
-		SetWindowText(hStatus, "Client Initialized...\n");
+		sprintf(StrBuff, "%s Client Initialized...\n", CurrentProtocol == TCP ? "TCP" : "UDP");
+		SetWindowText(hStatus, StrBuff);
 		Client();
+	}
+	/* if open file is being pressed */
+	if (LOWORD(wParam) == IDC_FILE && HIWORD(wParam) == BN_CLICKED)
+	{
+		if (OpenFile() == -1)
+			SetWindowText(hStatus, "Invalid File name\n");
+	}
+
+	/* if send file is being pressed */
+	if (LOWORD(wParam) == IDC_SENDFILE && HIWORD(wParam) == BN_CLICKED)
+	{
+		if (fp == NULL)
+		{
+			SetWindowText(hStatus, "Please Open a file first\n");
+		}
+		else
+		{
+			WSACleanup();
+			isSendFile = TRUE;
+			sprintf(StrBuff, "%s Client Initialized for sending file...\n",CurrentProtocol == TCP ? "TCP" : "UDP");
+			SetWindowText(hStatus, StrBuff);
+			Client();
+		}
 	}
 }
 
@@ -19,10 +45,10 @@ void Client()
 	WSADATA					wsaData;			/* Session info						*/
 	SOCKET					WritingSocket;		/* Socket for handling connection	*/
 	HANDLE					ClientThreadHandle;
-	DWORD					ClientThreadID;	
+	DWORD					ClientThreadID;
 	SOCKADDR_IN				ClientAddr;
 	/* Create a WSA v2.2 session */
-	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0)
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
 	{
 		sprintf(StrBuff, "WSAStartup() failed with error %d\n", WSAGetLastError());
 		AppendToStatus(hStatus, StrBuff);
@@ -30,7 +56,7 @@ void Client()
 	}
 
 	/* Create socket for writing based on currently selected protocol */
-	if ((WritingSocket = socket(AF_INET, (CurrentProtocol == TCP) ? SOCK_STREAM : SOCK_DGRAM, 
+	if ((WritingSocket = socket(AF_INET, (CurrentProtocol == TCP) ? SOCK_STREAM : SOCK_DGRAM,
 		(CurrentProtocol == TCP) ? IPPROTO_TCP : IPPROTO_UDP)) == INVALID_SOCKET)
 	{
 		sprintf(StrBuff, "WSASocket() failed with error %d\n", WSAGetLastError());
@@ -52,7 +78,8 @@ void Client()
 		sprintf(StrBuff, "WSAConnect() failed with error %d\n", WSAGetLastError());
 		AppendToStatus(hStatus, StrBuff);
 		return;
-	}else
+	}
+	else
 	if (CurrentProtocol == UDP && S_UDPConnect(WritingSocket, &ClientAddr) == FALSE)
 	{
 		sprintf(StrBuff, "bind() failed with error %d\n", WSAGetLastError());
@@ -60,7 +87,7 @@ void Client()
 		return;
 	}
 
-	sprintf(StrBuff, "Connected! Server: %s, Port: %s\n", ip, port);
+	sprintf(StrBuff, "Server: %s, Port: %s\n", ip, port);
 	AppendToStatus(hStatus, StrBuff);
 
 	/* Create thread to handle transmission */
@@ -84,7 +111,7 @@ DWORD WINAPI ClientThread(LPVOID lpParameter)
 	GetWindowText(hPSize, PacketSize, 8);
 	GetWindowText(hPNum, SendTimes, 8);
 
-	WritingSocket =  (SOCKET)lpParameter;
+	WritingSocket = (SOCKET)lpParameter;
 
 	/* Create socket information struct to associate with the acepted socket */
 	if ((SocketInfo = (LPSOCKET_INFORMATION)GlobalAlloc(GPTR, sizeof(SOCKET_INFORMATION)))
@@ -94,20 +121,38 @@ DWORD WINAPI ClientThread(LPVOID lpParameter)
 		AppendToStatus(hStatus, StrBuff);
 		return FALSE;
 	}
-	
+
 	/* Initialize socket info struc	*/
 	SocketInfo->Socket = WritingSocket;
 
-	SendInitialMessage(SocketInfo, PacketSize, SendTimes);
+	if (isSendFile)
+	{
+		/* Calculate number of packets that will be sent */
+		fseek(fp, 0L, SEEK_END);
+		int tmp = ceil((double)(ftell(fp) / (double)atoi(PacketSize)));
+		fseek(fp, 0L, SEEK_SET);
 
-	/* Transmit dummy packets */
-	SendPackets(SocketInfo, atoi(SendTimes), atoi(PacketSize));
+		SendInitialPacket(SocketInfo, atoi(PacketSize), tmp);
+		SendFile(SocketInfo, atoi(PacketSize));
+	}
+	else
+	{
+		SendInitialPacket(SocketInfo, atoi(PacketSize), atoi(SendTimes));
+		/* transmit dummy packets */
+		SendPackets(SocketInfo, atoi(SendTimes), atoi(PacketSize));
+	}
 
-	GlobalFree(SocketInfo);
+	/* Send last packet to indicate end of transmission */
+	SendLastPacket(SocketInfo);
+
+	/* Wait a little bit for the server to process incoming packets before closing the socket */
+	Sleep(((atoi(PacketSize) / 10)));
+	closesocket(SocketInfo->Socket);
+
 	return TRUE;
 }
 
-void SendInitialMessage(LPSOCKET_INFORMATION SOCKET_INFO, char * PacketSize, char * SendTimes)
+void SendInitialPacket(LPSOCKET_INFORMATION SOCKET_INFO, DWORD PacketSize, DWORD SendTimes)
 {
 	/* zero out overlapped structure	*/
 	std::string buffer = (char *)MakeInitMessage(PacketSize, SendTimes).c_str();
@@ -137,7 +182,7 @@ void SendPackets(LPSOCKET_INFORMATION SOCKET_INFO, DWORD Total, DWORD PacketSize
 		AppendToStatus(hStatus, StrBuff);
 
 		/* Different send methods based on the current protocol */
-		if ((CurrentProtocol == TCP ? S_TCPSend(SOCKET_INFO) : 
+		if ((CurrentProtocol == TCP ? S_TCPSend(SOCKET_INFO) :
 			S_UDPSend(SOCKET_INFO, &InternetAddr)) == FALSE)
 		{
 			sprintf(StrBuff, "WSASend() failed with error %d\n", WSAGetLastError());
@@ -145,6 +190,11 @@ void SendPackets(LPSOCKET_INFORMATION SOCKET_INFO, DWORD Total, DWORD PacketSize
 			return;
 		}
 	}
+
+}
+
+void SendLastPacket(LPSOCKET_INFORMATION SOCKET_INFO)
+{
 	/* Initialize a null packet */
 	SOCKET_INFO->DataBuf.len = 1;
 	SOCKET_INFO->DataBuf.buf = "\0";
@@ -157,16 +207,15 @@ void SendPackets(LPSOCKET_INFORMATION SOCKET_INFO, DWORD Total, DWORD PacketSize
 		AppendToStatus(hStatus, StrBuff);
 		return;
 	}
-	closesocket(SOCKET_INFO->Socket);
 	AppendToStatus(hStatus, "End of Transmission...Closing session\n");
 }
 
-std::string MakeInitMessage(char * PacketSize, char * SendTimes)
+std::string MakeInitMessage(DWORD PacketSize, DWORD SendTimes)
 {
 	std::string message;
-	message += PacketSize;
-	message += '.';
-	message += SendTimes;
+	std::ostringstream sstream;
+	sstream << PacketSize << "." << SendTimes;
+	message = sstream.str();
 	return message;
 }
 
@@ -178,6 +227,7 @@ std::string GetDummyPacket(const int size)
 	return packet;
 }
 
+
 void FillSockInfo(LPSOCKET_INFORMATION SOCKET_INFO, std::string * buffer, DWORD PacketSize)
 {
 	/* zero out overlapped structure	*/
@@ -186,4 +236,47 @@ void FillSockInfo(LPSOCKET_INFORMATION SOCKET_INFO, std::string * buffer, DWORD 
 	SOCKET_INFO->BytesSEND = 0;
 	SOCKET_INFO->DataBuf.len = PacketSize;
 	SOCKET_INFO->DataBuf.buf = (char *)buffer->c_str();
+}
+
+int OpenFile()
+{
+	char str[32];
+	GetWindowText(hFilename, str, 32);
+	if ((fp = fopen(str, "r")) == NULL)
+	{
+		return -1;
+	}
+	sprintf(StrBuff, "Successfully opened file: %s\n", str);
+	SetWindowText(hStatus, StrBuff);
+	return 0;
+}
+
+void SendFile(LPSOCKET_INFORMATION SOCKET_INFO, DWORD PacketSize)
+{
+	std::string tmp;
+	DWORD	FBytesRead;
+	char *	pbuf = (char *)malloc(PacketSize);
+	FillSockInfo(SOCKET_INFO, &tmp, PacketSize);
+	while (!feof(fp))
+	{
+		/* read PackeSize bytes from file */
+		FBytesRead = fread(pbuf, sizeof(char), PacketSize, fp);
+		SOCKET_INFO->DataBuf.buf = pbuf;
+		SOCKET_INFO->DataBuf.len = FBytesRead;
+
+		sprintf(StrBuff, "Sending File Packet... Size:  %d\n", FBytesRead);
+		AppendToStatus(hStatus, StrBuff);
+
+		/* Different send methods based on the current protocol */
+		if ((CurrentProtocol == TCP ? S_TCPSend(SOCKET_INFO) :
+			S_UDPSend(SOCKET_INFO, &InternetAddr)) == FALSE)
+		{
+			sprintf(StrBuff, "WSASend() failed with error %d\n", WSAGetLastError());
+			AppendToStatus(hStatus, StrBuff);
+			return;
+		}
+		/* zero out memory for next round */
+		memset(pbuf, 0, PacketSize);
+	}
+	free(pbuf);
 }

@@ -7,7 +7,7 @@ WSAEVENT					AcceptEvent;				/* Dummy event								*/
 BOOL						EndOfTransmission = FALSE;	/* Indicates EOT							*/
 TRANSMISSION_INFORMATION	TransInfo;					/* Pack statistics for one tranmission		*/
 FILE *						fp;							/* File descriptor for writing packets		*/
-
+WSAEVENT					TimerEvent;
 void ServerManager(WPARAM wParam)
 {
 	/* Check which protocol is being selected */
@@ -16,6 +16,8 @@ void ServerManager(WPARAM wParam)
 	/* Connect button is pressed */
 	if (LOWORD(wParam) == IDC_SEND && HIWORD(wParam) == BN_CLICKED)
 	{
+		if(fp != NULL)
+			fclose(fp);
 		WSACleanup();
 		SetWindowText(hStatus, "Server Initialized...\n");
 		Server();
@@ -32,7 +34,6 @@ void Server()
 	DWORD		AcceptThreadID;		/* Thread ID for accept thread		*/
 	DWORD		ServerThreadID;		/* Thread ID for worker thread		*/
 	DWORD		Ret;				/* Return value for session info	*/
-
 	/* Create a WSA v2.2 session */
 	if ((Ret = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0)
 	{
@@ -136,7 +137,10 @@ DWORD WINAPI UDPThread(LPVOID lpParameter)
 {
 	LPSOCKET_INFORMATION	SocketInfo;		/* Socket information for a packet			*/
 	DWORD					RecvBytes;		/* Actual bytes recived from recvfrom()		*/			
+	DWORD					TimerThreadID;
 	
+	TimerEvent = WSACreateEvent();
+
 	/* Open empty file for writing */
 	fp = fopen("ouput.txt", "w");
 
@@ -161,6 +165,8 @@ DWORD WINAPI UDPThread(LPVOID lpParameter)
 	/* Start counting system timer */
 	GetSystemTime(&TransInfo.StartTimeStamp);
 
+	CreateThread(NULL, 0, TimerThread, (LPVOID)SocketInfo, 0, &TimerThreadID);
+
 	while (TRUE)
 	{
 		/* Post an asynchrounous recieve request, supply ServerRoutine as the completion routine function */
@@ -170,15 +176,20 @@ DWORD WINAPI UDPThread(LPVOID lpParameter)
 			AppendToStatus(hStatus, StrBuff);
 			return FALSE;
 		}
-		else
-		{
-			/* Update tranmission info value */
-			UpdateTransmission(&TransInfo, RecvBytes, SocketInfo);
-		}
+
+		/* Update tranmission info value */
+		UpdateTransmission(&TransInfo, RecvBytes, SocketInfo);
+
+		/* Signal packet read to the Timer thread */
+		WSASetEvent(TimerEvent);
 
 		/* Last Packet recieved */
-		if (SocketInfo->Buffer[0] == '\0')
+		if (SocketInfo->Buffer[0] == '\0' || RecvBytes == 0 || RecvBytes == UINT_MAX)
+		{
+			if (SocketInfo->BytesRECV > 0)
+				TransInfo.PacketsRECV++;
 			break;
+		}
 
 	}
 	AppendToStatus(hStatus, "Ending Server Thread\n");
@@ -204,7 +215,6 @@ DWORD WINAPI TCPThread(LPVOID lpParameter)
 	LPSOCKET_INFORMATION	SocketInfo;		/* Accepting Socket information			*/
 	WSAEVENT				EventArray[1];	/* Accept event to wait on				*/
 	DWORD					Index;			/* Event index							*/
-	FILE *					fp;				/* File descriptor for writing packets	*/
 
 	fp = fopen("ouput.txt", "w");			/* Open empty file for writing			*/
 
@@ -234,11 +244,12 @@ DWORD WINAPI TCPThread(LPVOID lpParameter)
 			/* Indicates that last packet has been recieved from ServerRoutine() */
 			if (Index == WAIT_IO_COMPLETION && EndOfTransmission)
 			{
+				if (SocketInfo->BytesRECV > 0)
+					TransInfo.PacketsRECV++;
 				AppendToStatus(hStatus, "Ending Server Thread\n");	
 				EndOfTransmission = FALSE;
 				closesocket(SocketInfo->Socket);			/* Close current socket				*/
 				memset(&TransInfo, 0, sizeof(TransInfo));	/* Zero out transmission struct		*/
-				GlobalFree(SocketInfo);						/* Free memory from heap			*/
 				WSACleanup();								/* Close Winsock Session			*/
 				fclose(fp);									/* Close file descriptor			*/
 				return TRUE;
@@ -282,10 +293,8 @@ DWORD WINAPI TCPThread(LPVOID lpParameter)
 void CALLBACK ServerRoutine(DWORD Error, DWORD BytesTransferred,
 	LPWSAOVERLAPPED Overlapped, DWORD InFlags)
 {
-	LPSOCKET_INFORMATION SI;	/* Pointer to the socket info struct	*/
-
-								/* Cast Overlapped struct to SocketInfo struct */
-	SI = (LPSOCKET_INFORMATION)Overlapped;
+	LPSOCKET_INFORMATION SI;				/* Pointer to the socket info struct			*/
+	SI = (LPSOCKET_INFORMATION)Overlapped;	/* Cast Overlapped struct to SocketInfo struct	*/
 
 	/* Check for error */
 	if (Error != 0)
@@ -302,13 +311,11 @@ void CALLBACK ServerRoutine(DWORD Error, DWORD BytesTransferred,
 		AppendToStatus(hStatus, "Closing Socket\n");
 		EndOfTransmission = TRUE;
 
-		/* Free memory from heap */
-		GlobalFree(SI);
-
 		PrintTransmission(&TransInfo);
 		return;
 	}
 
+	/* Indicates a first packet arrival */
 	if (TransInfo.PacketSize == 0)
 	{
 		/* Store packet size and expected packets */
@@ -319,11 +326,10 @@ void CALLBACK ServerRoutine(DWORD Error, DWORD BytesTransferred,
 		AppendToStatus(hStatus, StrBuff);
 		GetSystemTime(&TransInfo.StartTimeStamp);
 	}
-	/*sprintf(StrBuff, "Packet recieved! Size: %d\n", strlen(SI->Buffer));
-	AppendToStatus(hStatus, StrBuff);*/
-	UpdateTransmission(&TransInfo, BytesTransferred, SI);
-
-	FillSockInfo(SI);
+	else
+	{
+		UpdateTransmission(&TransInfo, BytesTransferred, SI);
+	}
 
 	/* Post an asynchrounous recieve request, supply ServerRoutine as the completion routine function */
 	if (S_TCPRecieve(SI, TRUE) == FALSE)
@@ -356,4 +362,22 @@ void FillSockInfo(LPSOCKET_INFORMATION SOCKET_INFO)
 	ZeroMemory((&SOCKET_INFO->Overlapped), sizeof(WSAOVERLAPPED));
 	SOCKET_INFO->DataBuf.len = DATA_BUFSIZE;
 	SOCKET_INFO->DataBuf.buf = SOCKET_INFO->Buffer;
+}
+
+DWORD WINAPI TimerThread(LPVOID lpParameter)
+{
+	LPSOCKET_INFORMATION SOCKET_INFO;
+	WSAEVENT e[1];
+	e[0] = TimerEvent;
+	SOCKET_INFO = (LPSOCKET_INFORMATION)lpParameter;
+	while (TRUE)
+	{
+		if (WSAWaitForMultipleEvents(1, e, FALSE, 100, FALSE) == WSA_WAIT_TIMEOUT)
+		{
+			closesocket(SOCKET_INFO->Socket);
+			return FALSE;
+		}
+		WSAResetEvent(e[0]);
+	}
+	return TRUE;
 }

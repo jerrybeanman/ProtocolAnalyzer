@@ -8,3 +8,4 @@ DWORD WINAPI UDPThread(LPVOID lpParameter);
 void CALLBACK ServerRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags);
 void FillSockInfo(LPSOCKET_INFORMATION SOCKET_INFO);
 void GetInitialMessage(LPSOCKET_INFORMATION SocketInfo);
+DWORD WINAPI TimerThread(LPVOID lpParameter);

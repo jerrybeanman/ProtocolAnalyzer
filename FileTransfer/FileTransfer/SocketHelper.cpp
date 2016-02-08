@@ -114,18 +114,22 @@ BOOL S_UDPConnect(SOCKET WritingSocket, SOCKADDR_IN * InternetAddr)
 
 void UpdateTransmission(LPTRANSMISSION_INFORMATION TRANS_INFO, DWORD BytesRecieved, LPSOCKET_INFORMATION SOCKET_INFO)
 {
-	if (TRANS_INFO->PacketSize == 0)
+	if (BytesRecieved == UINT_MAX)
 		return;
-
 	SOCKET_INFO->BytesRECV += BytesRecieved;
-	unsigned int Result = (unsigned int)(SOCKET_INFO->BytesRECV / TRANS_INFO->PacketSize);
-	if (Result > TRANS_INFO->PacketsRECV)
+	int Result = (int)(SOCKET_INFO->BytesRECV / TRANS_INFO->PacketSize);
+	sprintf(StrBuff, "Data recieved! Size: %d\n", BytesRecieved);
+	AppendToStatus(hStatus, StrBuff);
+
+	/* If bytes recieved is greater than a packet length */
+	if (Result > 0)
 	{
-		sprintf(StrBuff, "Packet recieved! Size: %d\n", strlen(SOCKET_INFO->Buffer));
-		AppendToStatus(hStatus, StrBuff);
-		TRANS_INFO->PacketsRECV += Result - TRANS_INFO->PacketsRECV;
-		fprintf(fp, SOCKET_INFO->Buffer);
+		TRANS_INFO->PacketsRECV += Result;	/* Increment packets recieved by the maximum divider */
+		SOCKET_INFO->BytesRECV -= Result	/* Add remaining bytes to SOCKET_INFORMATION		*/		
+			* TRANS_INFO->PacketSize;
 	}
+	fprintf(fp, SOCKET_INFO->DataBuf.buf);
+	OutputDebugString(SOCKET_INFO->DataBuf.buf);
 }
 
 void PrintTransmission(LPTRANSMISSION_INFORMATION TRANS_INFO)
