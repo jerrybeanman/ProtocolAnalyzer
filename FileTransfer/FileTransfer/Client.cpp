@@ -8,7 +8,7 @@
 --				void Client()
 --				DWORD WINAPI ClientThread(LPVOID lpParameter)
 --				void SendInitialPacket(LPSOCKET_INFORMATION SOCKET_INFO, DWORD PacketSize, DWORD SendTimes)
---				void SendFile(LPSOCKET_INFORMATION SOCKET_INFO, DWORD PacketSize)
+--				void SendFile(LPSOCKET_INFORMATION SOCKET_INFO, DWORD PacketSize) 
 --				void SendDummyPackets(LPSOCKET_INFORMATION SOCKET_INFO, DWORD Total, DWORD PacketSize)
 --				void SendLastPacket(LPSOCKET_INFORMATION SOCKET_INFO)
 --				std::string MakeInitialPacket(DWORD PacketSize, DWORD SendTimes)

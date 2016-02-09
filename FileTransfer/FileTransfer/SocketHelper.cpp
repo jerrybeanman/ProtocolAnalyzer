@@ -294,8 +294,8 @@ void UpdateTransmission(LPTRANSMISSION_INFORMATION TRANS_INFO, DWORD BytesReciev
 	/* If bytes recieved is greater than a packet length */
 	if (Result > 0)
 	{
-		TRANS_INFO->PacketsRECV += Result;	/* Increment packets recieved by the maximum divider */
-		SOCKET_INFO->BytesRECV -= Result	/* Add remaining bytes to SOCKET_INFORMATION		*/		
+		TRANS_INFO->PacketsRECV += Result;	/* Increment packets recieved by the maximum divider	*/
+		SOCKET_INFO->BytesRECV -= Result	/* Add remaining bytes to SOCKET_INFORMATION->BytesRECV	*/		
 			* TRANS_INFO->PacketSize;
 	}
 

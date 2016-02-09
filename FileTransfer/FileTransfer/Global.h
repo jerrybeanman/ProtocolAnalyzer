@@ -12,7 +12,7 @@
 #define HOST_INPUT		106
 #define MAXBUF			256
 #define DEFAULT_PORT	7000
-#define DATA_BUFSIZE	40000
+#define DATA_BUFSIZE	100000
 
 #include <iostream>
 #include <sstream>

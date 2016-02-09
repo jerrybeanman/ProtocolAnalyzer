@@ -50,7 +50,7 @@ void FindDialogItems()
 	SetWindowText(hPort, "7000");
 	SetWindowText(hPSize, "2000");
 	SetWindowText(hPNum, "1");
-	SetWindowText(hIP, "192.168.1.67");
+	SetWindowText(hIP, "142.232.50.240");
 }
 
 void EnableGUI(BOOL isEnable)
