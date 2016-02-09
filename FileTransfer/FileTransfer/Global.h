@@ -13,6 +13,11 @@
 #define MAXBUF			256
 #define DEFAULT_PORT	7000
 #define DATA_BUFSIZE	100000
+#define FILE_NAME		TEXT("WarAndPeace")
+#define PORT_NUMBER		TEXT("7000")
+#define PACKET_SIZE		TEXT("2000")
+#define SEND_TIMES		TEXT("10")
+#define IP_ADDRESS		TEXT("142.232.50.240")
 
 #include <iostream>
 #include <sstream>
@@ -49,42 +54,36 @@ typedef struct _TRANSMISSION_INFORMATION
 #include "SocketHelper.h"
 #include "Client.h"
 #include "Server.h"
-extern MSG Msg;
 
 extern TRANSMISSION_INFORMATION TransInfo;
 extern FILE * fp;
-extern HANDLE		hf;              /* file handle */
-extern std::string	readFrom;
-extern OPENFILENAME ofn;			 /* common dialog box structure */
-extern HANDLE		fileReadWriteThread;
-extern DWORD		fileReadWriteID;
-
-extern char	szFile[260];     /* buffer for file name */
-
-extern DWORD CurrentMode;
-extern DWORD CurrentSelectedInputType;
-extern DWORD CurrentProtocol;
+extern char	szFile[260];				/* buffer for file name							*/
+extern DWORD CurrentMode;				/* Current mode selected (Client or Server)		*/
+extern DWORD CurrentSelectedInputType;	/* Current input type selected (IP or hostname)	*/
+extern DWORD CurrentProtocol;			/* Current protocol selected (TCP or UDP)		*/
 
 
 extern char str[526];
 extern char * StrBuff;
-extern HWND hwnd;					/* owner window */
-extern HWND hDlg;
-extern HWND hServer;				/* owner window */
-extern HWND hClient;				/* owner window */
-extern HWND hTCP;					/* owner window */
-extern HWND hInputType;
-extern HWND hHost;
-extern HWND hIP;
-extern HWND hUDP;					/* owner window */
-extern HWND hPort;					/* owner window */
-extern HWND hPSize;					/* owner window */
-extern HWND hPNum;					/* owner window */
-extern HWND hStatus;
-extern HWND hFilename;				/* owner window */
-extern HWND hOpenFile;				/* owner window */
-extern HWND hSendFile;
-extern HWND hConnect;				/* owner window */
+
+/* WINDOWS STUFF...*/
+extern HWND hwnd;					/* Handle to main window			*/
+extern HWND hDlg;					/* Handle to dialog box				*/
+extern HWND hServer;				/* Handle to server radiobutton		*/
+extern HWND hClient;				/* Handle to clietn radiobutton		*/
+extern HWND hTCP;					/* Handle to IP editfield			*/
+extern HWND hInputType;				/* Handle to TCP radiobutton		*/
+extern HWND hHost;					/* Handle to UDP radiobutton		*/
+extern HWND hIP;					/* Handle to Input dropdown list	*/
+extern HWND hUDP;					/* Handle to Hostnam editfield		*/
+extern HWND hPort;					/* Handle to port number editfield  */
+extern HWND hPSize;					/* Handle to packet size editfield  */
+extern HWND hPNum;					/* Handle to number of packets		*/
+extern HWND hStatus;				/* Handle to status text field		*/
+extern HWND hFilename;				/* Handle to file name text field	*/
+extern HWND hOpenFile;				/* Handle to open file button		*/
+extern HWND hSendFile;				/* Handle to send file button		*/
+extern HWND hConnect;				/* Handle to connect button			*/
 extern HWND hCombA;
 
 #endif

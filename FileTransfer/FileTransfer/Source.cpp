@@ -2,22 +2,39 @@
 
 /* Function prototype */
 INT_PTR CALLBACK WndProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-MSG Msg;
 
+MSG Msg;
 DWORD CurrentMode;
 DWORD CurrentProtocol;
 DWORD CurrentSelectedInputType;
 
-
+/*------------------------------------------------------------------------------------------------------------------
+-- FUNCTION:	WinMain
+--
+-- DATE:		Febuary 6th, 2016
+--
+-- REVISIONS:
+--
+-- DESIGNER:	Ruoqi Jia
+--
+-- PROGRAMMER:	Ruoqi Jia
+--
+-- INTERFACE:	int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hprevInstance,
+	LPSTR lspszCmdParam, int nCmdShow) 
+--
+-- RETURNS: exit code
+--
+-- NOTES: Main entry point of the program 
+--------------------------------------------------------------------------------------------------------------------*/
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hprevInstance,
 	LPSTR lspszCmdParam, int nCmdShow) 
 {
-
 	/* Sets the dialog box defined in Reource file as the main window */
 	hDlg = CreateDialogParam(hInst, MAKEINTRESOURCE(IDD_DIALOG1), 0, WndProc, 0);
 	ShowWindow(hDlg, nCmdShow);
 
 	FindDialogItems();
+	FillDefaultValues();
 
 	while (GetMessage(&Msg, NULL, 0, 0))
 	{
@@ -28,6 +45,23 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hprevInstance,
 	return Msg.wParam;
 }
 
+/*------------------------------------------------------------------------------------------------------------------
+-- FUNCTION:	WndProc
+--
+-- DATE:		Febuary 6th, 2016
+--
+-- REVISIONS:
+--
+-- DESIGNER:	Ruoqi Jia
+--
+-- PROGRAMMER:	Ruoqi Jia
+--
+-- INTERFACE:	INT_PTR CALLBACK WndProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+--
+-- RETURNS: success value
+--
+-- NOTES: Handles window messages 
+--------------------------------------------------------------------------------------------------------------------*/
 INT_PTR CALLBACK WndProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)

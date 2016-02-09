@@ -1,29 +1,58 @@
+/*------------------------------------------------------------------------------------------------------------------
+-- SOURCE FILE:	MenuController.c - For initialization of menu item handlers and filling default parameters
+--
+-- PROGRAM:		Protocol Analyzer
+--
+-- FUNCTIONS:	void FindDialogItems()
+--				void EnableGUI(BOOL isEnable)
+--				void AppendToStatus(HWND handle, char * buffer)
+--
+-- DATE:		Febuary 6th, 2016
+--
+-- REVISIONS:
+--
+-- DESIGNER:	Ruoqi Jia
+--
+-- PROGRAMMER:	Ruoqi Jia
+--
+-- NOTES: 
+--------------------------------------------------------------------------------------------------------------------*/
 #include "MenuController.h"
-HANDLE			hf;              // file handle
-OPENFILENAME	ofn;			 // common dialog box structure
-char			szFile[260];     /* buffer for file name */
-HANDLE			fileReadWriteThread;
-std::string		readFrom;
-DWORD			fileReadWriteID;
+HWND hwnd;			/* Handle to main window			*/
+HWND hDlg;			/* Handle to dialog box				*/
+HWND hServer;		/* Handle to server radiobutton		*/
+HWND hClient;		/* Handle to clietn radiobutton		*/			
+HWND hIP;			/* Handle to IP editfield			*/
+HWND hTCP;			/* Handle to TCP radiobutton		*/
+HWND hUDP;			/* Handle to UDP radiobutton		*/
+HWND hInputType;	/* Handle to Input dropdown list	*/
+HWND hHost;			/* Handle to Hostnam editfield		*/
+HWND hPort;			/* Handle to port number editfield  */			
+HWND hPSize;		/* Handle to packet size editfield  */
+HWND hPNum;			/* Handle to number of packets		*/
+HWND hStatus;		/* Handle to status text field		*/
+HWND hFilename;		/* Handle to file name text field	*/
+HWND hOpenFile;		/* Handle to open file button		*/
+HWND hSendFile;		/* Handle to send file button		*/
+HWND hConnect;		/* Handle to connect button			*/
 
-HWND hwnd;						/* owner window */
-HWND hDlg;
-HWND hServer;					/* owner window */
-HWND hClient;					/* owner window */
-HWND hIP;
-HWND hTCP;						/* owner window */
-HWND hUDP;						/* owner window */
-HWND hInputType;
-HWND hHost;
-HWND hPort;						/* owner window */
-HWND hPSize;					/* owner window */
-HWND hPNum;						/* owner window */
-HWND hStatus;
-HWND hFilename;					/* owner window */
-HWND hOpenFile;					/* owner window */
-HWND hSendFile;
-HWND hConnect;					/* owner window */
-
+/*------------------------------------------------------------------------------------------------------------------
+-- FUNCTION:	FindDialogItems
+--
+-- DATE:		Febuary 6th, 2016
+--
+-- REVISIONS:
+--
+-- DESIGNER:	Ruoqi Jia
+--
+-- PROGRAMMER:	Ruoqi Jia
+--
+-- INTERFACE:	void FindDialogItems()
+--
+-- RETURNS: void
+--
+-- NOTES: Initializes menu item handlers 
+--------------------------------------------------------------------------------------------------------------------*/
 void FindDialogItems()
 {
 	hServer		= GetDlgItem(hDlg, IDC_SERVER);
@@ -41,18 +70,56 @@ void FindDialogItems()
 	hSendFile	= GetDlgItem(hDlg, IDC_SENDFILE);
 	hOpenFile	= GetDlgItem(hDlg, IDC_FILE);
 	hConnect	= GetDlgItem(hDlg, IDC_SEND);
+}
 
+/*------------------------------------------------------------------------------------------------------------------
+-- FUNCTION:	FillDefaultValues
+--
+-- DATE:		Febuary 6th, 2016
+--
+-- REVISIONS:
+--
+-- DESIGNER:	Ruoqi Jia
+--
+-- PROGRAMMER:	Ruoqi Jia
+--
+-- INTERFACE:	void FillDefaultValues()
+--
+-- RETURNS: void
+--
+-- NOTES: Fill in some default values for the ease of troubleshooting 
+--------------------------------------------------------------------------------------------------------------------*/
+void FillDefaultValues()
+{
+	/* Fill in input type items */
 	SendMessage(hInputType, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)"Host Name");
 	SendMessage(hInputType, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)"IP Address");
 
 	/* Fill in some default values here */
-	SetWindowText(hFilename, "WarAndPeace");
-	SetWindowText(hPort, "7000");
-	SetWindowText(hPSize, "2000");
-	SetWindowText(hPNum, "1");
-	SetWindowText(hIP, "142.232.50.240");
+	SetWindowText(hFilename, FILE_NAME);
+	SetWindowText(hPort, PORT_NUMBER);
+	SetWindowText(hPSize, PACKET_SIZE);
+	SetWindowText(hPNum, SEND_TIMES);
+	SetWindowText(hIP, IP_ADDRESS);
 }
 
+/*------------------------------------------------------------------------------------------------------------------
+-- FUNCTION:	EnableGUI
+--
+-- DATE:		Febuary 6th, 2016
+--
+-- REVISIONS:
+--
+-- DESIGNER:	Ruoqi Jia
+--
+-- PROGRAMMER:	Ruoqi Jia
+--
+-- INTERFACE:	void EnableGUI(BOOL isEnable)
+--
+-- RETURNS: void
+--
+-- NOTES: Enable and disable menu items depending on which mode is checked (Server or Client)
+--------------------------------------------------------------------------------------------------------------------*/
 void EnableGUI(BOOL isEnable)
 {
 	SetWindowText(hConnect, (isEnable) ? "Send Packets" : "Start Server");
@@ -68,6 +135,23 @@ void EnableGUI(BOOL isEnable)
 	CurrentMode = (isEnable) ? CLIENT_MODE : SERVER_MODE;
 }
 
+/*------------------------------------------------------------------------------------------------------------------
+-- FUNCTION:	AppendToStatus
+--
+-- DATE:		Febuary 6th, 2016
+--
+-- REVISIONS:
+--
+-- DESIGNER:	Ruoqi Jia
+--
+-- PROGRAMMER:	Ruoqi Jia
+--
+-- INTERFACE:	void AppendToStatus(HWND handle, char * buffer)
+--
+-- RETURNS: void
+--
+-- NOTES: Wrapper function to update string into a edit field 
+--------------------------------------------------------------------------------------------------------------------*/
 void AppendToStatus(HWND handle, char * buffer)
 {
 	int index = GetWindowTextLength(handle);
