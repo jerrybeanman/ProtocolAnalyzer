@@ -57,7 +57,7 @@ BOOL S_TCPSend(LPSOCKET_INFORMATION SOCKET_INFO)
 		NULL)							/* No completion routine				*/
 		== SOCKET_ERROR)
 	{
-		if (WSAGetLastError() != WSA_IO_PENDING)
+		if (WSAGetLastError() != ERROR_IO_PENDING)
 		{
 			return FALSE;
 		}
@@ -294,9 +294,11 @@ void UpdateTransmission(LPTRANSMISSION_INFORMATION TRANS_INFO, DWORD BytesReciev
 	/* If bytes recieved is greater than a packet length */
 	if (Result > 0)
 	{
-		TRANS_INFO->PacketsRECV += Result;	/* Increment packets recieved by the maximum divider	*/
-		SOCKET_INFO->BytesRECV -= Result	/* Add remaining bytes to SOCKET_INFORMATION->BytesRECV	*/		
+		TRANS_INFO->PacketsRECV += Result;			/* Increment packets recieved by the maximum divider	*/
+		SOCKET_INFO->BytesRECV -= Result			/* Add remaining bytes to SOCKET_INFORMATION->BytesRECV	*/		
 			* TRANS_INFO->PacketSize;
+
+		SendMessage(hProgress, PBM_DELTAPOS, Result * 10, 0);	/* Increment progress bar */
 	}
 
 	/* Write the packet content to a output file */
@@ -336,7 +338,49 @@ void PrintTransmission(LPTRANSMISSION_INFORMATION TRANS_INFO)
 	AppendToStatus(hStatus, StrBuff);
 	sprintf(StrBuff, "Packets Recieved: %d\n", TRANS_INFO->PacketsRECV);
 	AppendToStatus(hStatus, StrBuff);
+	sprintf(StrBuff, "Total Bytes Recieved: %d\n", TRANS_INFO->PacketsRECV * TRANS_INFO->PacketSize);
+	AppendToStatus(hStatus, StrBuff);
 	AppendToStatus(hStatus, "**************************************************\n");
+
+	WriteTransmission(TRANS_INFO, "statistics.txt");
+}
+
+/*------------------------------------------------------------------------------------------------------------------
+-- FUNCTION:	WriteTransmission
+--
+-- DATE:		Febuary 6th, 2016
+--
+-- REVISIONS:
+--
+-- DESIGNER:	Ruoqi Jia
+--
+-- PROGRAMMER:	Ruoqi Jia
+--
+-- INTERFACE:	void WriteTransmission(LPTRANSMISSION_INFORMATION TRANS_INFO, char * FileName)
+--
+-- RETURNS: void
+--
+-- NOTES: Prints the transmission information values to a file 
+--------------------------------------------------------------------------------------------------------------------*/
+void WriteTransmission(LPTRANSMISSION_INFORMATION TRANS_INFO, char * FileName)
+{
+	FILE * fp;
+	time_t t = time(NULL);
+	struct tm tm = *localtime(&t);
+
+	fp = fopen(FileName, "a");
+	fprintf(fp, "**************************************************\n");
+	fprintf(fp, "		TIME: %d-%d-%d, %d:%d:%d\n\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+	fprintf(fp, "Starting Time Stamp: %d\n", TRANS_INFO->StartTimeStamp.wMilliseconds);
+	fprintf(fp, "Ending Time Stamp: %d\n", TRANS_INFO->StartTimeStamp.wMilliseconds);
+	fprintf(fp, "Delay: %d\n", delay(TRANS_INFO->StartTimeStamp, TRANS_INFO->EndTimeStamp));
+	fprintf(fp, "Packet size: %d\n", TRANS_INFO->PacketSize);
+	fprintf(fp, "Packets Expected: %d\n", TRANS_INFO->PacketsExpected);
+	fprintf(fp, "Packets Recieved: %d\n", TRANS_INFO->PacketsRECV);
+	fprintf(fp, "Total Bytes Recieved: %d\n", TRANS_INFO->PacketsRECV * TRANS_INFO->PacketSize);
+	fprintf(fp, "**************************************************\n\n");
+	
+	fclose(fp);
 }
 
 /*------------------------------------------------------------------------------------------------------------------

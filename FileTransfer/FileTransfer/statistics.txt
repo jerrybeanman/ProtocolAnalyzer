@@ -1,0 +1,34 @@
+
+Date: 2016-2-10, 17:7:52
+**************************************************
+Starting Time Stamp: 456
+Ending Time Stamp: 456
+Delay: 1369
+Packet size: 60000
+Packets Expected: 100
+Packets Recieved: 100
+Total Bytes Recieved: 6000000
+**************************************************
+
+**************************************************
+				TIME: 2016-2-10, 17:8:45
+Starting Time Stamp: 882
+Ending Time Stamp: 882
+Delay: 1384
+Packet size: 60000
+Packets Expected: 100
+Packets Recieved: 100
+Total Bytes Recieved: 6000000
+**************************************************
+
+**************************************************
+		TIME: 2016-2-10, 17:9:33
+Starting Time Stamp: 8
+Ending Time Stamp: 8
+Delay: 11385
+Packet size: 60000
+Packets Expected: 100
+Packets Recieved: 178
+Total Bytes Recieved: 10680000
+**************************************************
+

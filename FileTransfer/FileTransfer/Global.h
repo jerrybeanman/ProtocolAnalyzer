@@ -15,9 +15,9 @@
 #define DATA_BUFSIZE	100000
 #define FILE_NAME		TEXT("WarAndPeace")
 #define PORT_NUMBER		TEXT("7000")
-#define PACKET_SIZE		TEXT("2000")
-#define SEND_TIMES		TEXT("10")
-#define IP_ADDRESS		TEXT("142.232.50.240")
+#define PACKET_SIZE		TEXT("60000")
+#define SEND_TIMES		TEXT("100")
+#define IP_ADDRESS		TEXT("192.168.1.67")
 
 #include <iostream>
 #include <sstream>
@@ -29,7 +29,8 @@
 #include <windows.h>
 #include <stdio.h>
 #include <iostream>
-
+#include <commctrl.h>
+#include <time.h>
 
 typedef struct _SOCKET_INFORMATION 
 {
@@ -74,6 +75,7 @@ extern HWND hClient;				/* Handle to clietn radiobutton		*/
 extern HWND hTCP;					/* Handle to IP editfield			*/
 extern HWND hInputType;				/* Handle to TCP radiobutton		*/
 extern HWND hHost;					/* Handle to UDP radiobutton		*/
+extern HWND hProgress;				/* Handle to progress bar			*/
 extern HWND hIP;					/* Handle to Input dropdown list	*/
 extern HWND hUDP;					/* Handle to Hostnam editfield		*/
 extern HWND hPort;					/* Handle to port number editfield  */

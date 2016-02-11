@@ -197,6 +197,25 @@ void UpdateTransmission(LPTRANSMISSION_INFORMATION TRANS_INFO, DWORD BytesReciev
 void PrintTransmission(LPTRANSMISSION_INFORMATION TRANS_INFO);
 
 /*------------------------------------------------------------------------------------------------------------------
+-- FUNCTION:	WriteTransmission
+--
+-- DATE:		Febuary 6th, 2016
+--
+-- REVISIONS:
+--
+-- DESIGNER:	Ruoqi Jia
+--
+-- PROGRAMMER:	Ruoqi Jia
+--
+-- INTERFACE:	void WriteTransmission(LPTRANSMISSION_INFORMATION TRANS_INFO, char * FileName)
+--
+-- RETURNS: void
+--
+-- NOTES: Prints the transmission information values to a file
+--------------------------------------------------------------------------------------------------------------------*/
+void WriteTransmission(LPTRANSMISSION_INFORMATION TRANS_INFO, char * FileName);
+
+/*------------------------------------------------------------------------------------------------------------------
 -- FUNCTION:	delay
 --
 -- DATE:		Febuary 6th, 2016

@@ -89,6 +89,10 @@ void ServerManager(WPARAM wParam)
 		WSACleanup();
 
 		SetWindowText(hStatus, "Server Initialized...\n");
+
+		/* Reset progress bar */
+		SendMessage(hProgress, PBM_SETPOS, 0, 0);
+
 		Server();
 	}
 }
@@ -307,9 +311,6 @@ DWORD WINAPI UDPThread(LPVOID lpParameter)
 			return FALSE;
 		}
 
-		/* Update tranmission info value */
-		UpdateTransmission(&TransInfo, RecvBytes, SocketInfo);
-
 		/* Signal packet read to the Timer thread */
 		WSASetEvent(TimerEvent);
 
@@ -321,12 +322,17 @@ DWORD WINAPI UDPThread(LPVOID lpParameter)
 			break;
 		}
 
+		/* Update tranmission info value */
+		UpdateTransmission(&TransInfo, RecvBytes, SocketInfo);
+
 	}
 	AppendToStatus(hStatus, "Ending Server Thread\n");
 
 	/* End system timer and print out transmission info */
 	GetSystemTime(&TransInfo.EndTimeStamp);
 	PrintTransmission(&TransInfo);
+
+	SendMessage(hProgress, PBM_STEPIT, 0, 0);	/* Increment progress bar */
 
 	/* CLose the socket */
 	closesocket(SocketInfo->Socket);
@@ -402,6 +408,7 @@ DWORD WINAPI TCPThread(LPVOID lpParameter)
 				WSACleanup();								/* Close Winsock Session				*/
 				fclose(fp);									/* Close file descriptor				*/
 				AppendToStatus(hStatus, "Ending Server Thread\n");
+				SendMessage(hProgress, PBM_STEPIT, 0, 0);	/* Increment progress bar */
 				return TRUE;
 			}
 		}
@@ -487,7 +494,7 @@ void CALLBACK ServerRoutine(DWORD Error, DWORD BytesTransferred,
 		AppendToStatus(hStatus, "Closing Socket\n");
 		GetSystemTime(&TransInfo.EndTimeStamp);			/* Get the ending time stamp for this transmission	*/
 		EndOfTransmission = TRUE;						/* Indicate end of transmission packet				*/
-		PrintTransmission(&TransInfo);					/* Print out statistics								 */
+		PrintTransmission(&TransInfo);					/* Print out statistics								*/
 		return;
 	}
 
@@ -499,7 +506,7 @@ void CALLBACK ServerRoutine(DWORD Error, DWORD BytesTransferred,
 
 		sprintf(StrBuff, "\nExpected packet size: %d, Expected number of packets: %d\n\n", TransInfo.PacketSize, TransInfo.PacketsExpected);
 		AppendToStatus(hStatus, StrBuff);
-
+		SendMessage(hProgress, PBM_SETRANGE, 0, MAKELPARAM(0, TransInfo.PacketsExpected * 10));
 		/* Get the starting time stamp for this transmisssion */
 		GetSystemTime(&TransInfo.StartTimeStamp);
 	}
@@ -550,6 +557,9 @@ void GetInitialMessage(LPSOCKET_INFORMATION SocketInfo)
 
 	/* Extract and store the packet size and number of packets expected into TRANSMISSSION_INFORMATION struct */
 	sscanf(SocketInfo->DataBuf.buf, "%d.%d", &TransInfo.PacketSize, &TransInfo.PacketsExpected);
+
+	/* Set progress bar range			*/
+	SendMessage(hProgress, PBM_SETRANGE, 0, MAKELPARAM(0, TransInfo.PacketsExpected * 10));
 
 	sprintf(StrBuff, "\nExpected packet size: %d, Expected number of packets: %d\n\n", TransInfo.PacketSize, TransInfo.PacketsExpected);
 	AppendToStatus(hStatus, StrBuff);

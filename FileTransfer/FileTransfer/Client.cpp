@@ -74,6 +74,9 @@ void ClientManager(WPARAM wParam)
 		sprintf(StrBuff, "%s Client Initialized...\n", CurrentProtocol == TCP ? "TCP" : "UDP");
 		SetWindowText(hStatus, StrBuff);
 
+		/* Reset progress bar */
+		SendMessage(hProgress, PBM_SETPOS, 0, 0);
+
 		Client();
 	}
 	/* if open file is being pressed */
@@ -97,6 +100,9 @@ void ClientManager(WPARAM wParam)
 
 			sprintf(StrBuff, "%s Client Initialized for sending file...\n",CurrentProtocol == TCP ? "TCP" : "UDP");
 			SetWindowText(hStatus, StrBuff);
+
+			/* Reset progress bar */
+			SendMessage(hProgress, PBM_SETPOS, 0, 0);
 
 			Client();
 		}
@@ -130,13 +136,14 @@ void ClientManager(WPARAM wParam)
 --------------------------------------------------------------------------------------------------------------------*/
 void Client()
 {
-	char ip[256];								/* IP address for the target host	*/
-	char port[256];								/* Port number for the target host	*/
+	char					ip[256];			/* IP address for the target host	*/
+	char					port[256];			/* Port number for the target host	*/
 	WSADATA					wsaData;			/* Session info						*/
 	SOCKET					WritingSocket;		/* Socket for handling connection	*/
 	HANDLE					ClientThreadHandle;	/* Thread handle for the new thread	*/
 	DWORD					ClientThreadID;		/* Thread handle ID					*/
 	SOCKADDR_IN				ClientAddr;			/* Address structure to bind on		*/
+
 
 	/* Create a WSA v2.2 session */
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
@@ -216,16 +223,14 @@ void Client()
 --------------------------------------------------------------------------------------------------------------------*/
 DWORD WINAPI ClientThread(LPVOID lpParameter)
 {
-	SOCKET					WritingSocket;		/* Socket that will be operated on for sending	*/
 	LPSOCKET_INFORMATION	SocketInfo;			/* Socket information structure					*/
 	CHAR					PacketSize[8];		/* Size of each packet							*/
 	CHAR					SendTimes[8];		/* Number of times the packets will be sent		*/
+	DWORD					TotalBytes;			/* Total bytes that will be sent	*/
 
 	/* Retrieve values from window */
 	GetWindowText(hPSize, PacketSize, 8);
 	GetWindowText(hPNum, SendTimes, 8);
-
-	WritingSocket = (SOCKET)lpParameter;
 
 	/* Create socket information struct to associate with the acepted socket */
 	if ((SocketInfo = (LPSOCKET_INFORMATION)GlobalAlloc(GPTR, sizeof(SOCKET_INFORMATION)))
@@ -236,8 +241,8 @@ DWORD WINAPI ClientThread(LPVOID lpParameter)
 		return FALSE;
 	}
 
-	/* Initialize socket info struc	*/
-	SocketInfo->Socket = WritingSocket;
+	/* Initialize socket info struc		*/
+	SocketInfo->Socket = (SOCKET)lpParameter;
 
 	/* Check if we want to send a file	*/
 	if (isSendFile)
@@ -246,6 +251,9 @@ DWORD WINAPI ClientThread(LPVOID lpParameter)
 		fseek(fp, 0L, SEEK_END);
 		int tmp = ceil((double)(ftell(fp) / (double)atoi(PacketSize)));
 		fseek(fp, 0L, SEEK_SET);
+		
+		/* Set progress bar range			*/
+		SendMessage(hProgress, PBM_SETRANGE, 0, MAKELPARAM(0, tmp * 10));
 
 		SendInitialPacket(SocketInfo, atoi(PacketSize), tmp);
 		SendFile(SocketInfo, atoi(PacketSize));
@@ -253,6 +261,10 @@ DWORD WINAPI ClientThread(LPVOID lpParameter)
 	/* Send dummy packets instead		*/
 	else
 	{
+
+		/* Set progress bar range			*/
+		SendMessage(hProgress, PBM_SETRANGE, 0, MAKELPARAM(0, atoi(SendTimes) * 10));
+
 		SendInitialPacket(SocketInfo, atoi(PacketSize), atoi(SendTimes));
 		/* transmit dummy packets */
 		SendDummyPackets(SocketInfo, atoi(SendTimes), atoi(PacketSize));
@@ -261,12 +273,15 @@ DWORD WINAPI ClientThread(LPVOID lpParameter)
 	/* Send last packet to indicate end of transmission */
 	SendLastPacket(SocketInfo);
 
+	TotalBytes = atoi(PacketSize) * atoi(SendTimes);
+
 	/* Wait a little bit for the server to process incoming packets before closing the socket */
-	Sleep(((atoi(PacketSize) / 10)));
+	Sleep(TotalBytes * 0.0001);
 
 	/* Close the socket */
 	closesocket(SocketInfo->Socket);
 
+	AppendToStatus(hStatus, "End of Transmission...Closing session\n");
 	return TRUE;
 }
 
@@ -331,9 +346,9 @@ void SendInitialPacket(LPSOCKET_INFORMATION SOCKET_INFO, DWORD PacketSize, DWORD
 --------------------------------------------------------------------------------------------------------------------*/
 void SendFile(LPSOCKET_INFORMATION SOCKET_INFO, DWORD PacketSize)
 {
-	std::string tmp;		/* empty packet for initializing SOCKET_INFO	*/						
-	DWORD	FBytesRead;		/* Bytes read from fread						*/				
-	char *	pbuf;			/* Pointer to buffer recieved from fread		*/
+	std::string tmp;			/* empty packet for initializing SOCKET_INFO	*/						
+	DWORD		FBytesRead;		/* Bytes read from fread						*/				
+	char *		pbuf;			/* Pointer to buffer recieved from fread		*/
 
 	/* Allocate memory for buffer and initialize SOCKET_INFO */
 	pbuf = (char *)malloc(PacketSize);
@@ -342,6 +357,8 @@ void SendFile(LPSOCKET_INFORMATION SOCKET_INFO, DWORD PacketSize)
 	/* Keeps reading from file */
 	while (!feof(fp))
 	{
+		SendMessage(hProgress, PBM_DELTAPOS, 10, 0);	/* Increment progress bar */
+
 		/* read PackeSize bytes from file */
 		FBytesRead = fread(pbuf, sizeof(char), PacketSize, fp);
 		SOCKET_INFO->DataBuf.buf = pbuf;
@@ -398,6 +415,8 @@ void SendDummyPackets(LPSOCKET_INFORMATION SOCKET_INFO, DWORD Total, DWORD Packe
 	/* Keep on sending the dummy packet to the socket */
 	for (int i = 0; i < Total; i++)
 	{
+		SendMessage(hProgress, PBM_DELTAPOS, 10, 0);	/* Increment progress bar */
+
 		sprintf(StrBuff, "Sending Packet... Size:  %d\n", strlen(SOCKET_INFO->DataBuf.buf));
 		AppendToStatus(hStatus, StrBuff);
 
@@ -445,7 +464,6 @@ void SendLastPacket(LPSOCKET_INFORMATION SOCKET_INFO)
 		AppendToStatus(hStatus, StrBuff);
 		return;
 	}
-	AppendToStatus(hStatus, "End of Transmission...Closing session\n");
 }
 
 /*------------------------------------------------------------------------------------------------------------------

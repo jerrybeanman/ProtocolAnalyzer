@@ -26,6 +26,7 @@ HWND hIP;			/* Handle to IP editfield			*/
 HWND hTCP;			/* Handle to TCP radiobutton		*/
 HWND hUDP;			/* Handle to UDP radiobutton		*/
 HWND hInputType;	/* Handle to Input dropdown list	*/
+HWND hProgress;		/* Handle to progress bar			*/
 HWND hHost;			/* Handle to Hostnam editfield		*/
 HWND hPort;			/* Handle to port number editfield  */			
 HWND hPSize;		/* Handle to packet size editfield  */
@@ -62,6 +63,7 @@ void FindDialogItems()
 	hUDP		= GetDlgItem(hDlg, IDC_UPD);
 	hPort		= GetDlgItem(hDlg, IDC_PORTNUMBER);
 	hInputType	= GetDlgItem(hDlg, IDC_InputType);
+	hProgress	= GetDlgItem(hDlg, IDC_PROGRESS);
 	hHost		= GetDlgItem(hDlg, IDC_Host);
 	hPSize		= GetDlgItem(hDlg, IDC_PSIZE);
 	hPNum		= GetDlgItem(hDlg, IDC_PNUM);
