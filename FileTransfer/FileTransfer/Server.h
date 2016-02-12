@@ -240,3 +240,5 @@ void FillSockInfo(LPSOCKET_INFORMATION SOCKET_INFO);
 --			are anymore incoming traffics coming in to determine the end of transmission.
 --------------------------------------------------------------------------------------------------------------------*/
 DWORD WINAPI TimerThread(LPVOID lpParameter);
+
+DWORD WINAPI CircularIO(LPVOID lpParameter);

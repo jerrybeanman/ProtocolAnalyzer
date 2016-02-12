@@ -113,6 +113,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CircularBuffer.h" />
     <ClInclude Include="Client.h" />
     <ClInclude Include="Global.h" />
     <ClInclude Include="MenuController.h" />
@@ -124,6 +125,7 @@
     <ResourceCompile Include="Resource.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CircularBuffer.cpp" />
     <ClCompile Include="Client.cpp" />
     <ClCompile Include="MenuController.cpp" />
     <ClCompile Include="Server.cpp" />

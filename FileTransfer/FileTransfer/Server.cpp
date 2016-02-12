@@ -19,8 +19,8 @@
 --
 -- REVISIONS:
 --
--- DESIGNER:	Ruoqi Jia
---
+-- DESIGNER:	Ruoqi Jia 
+
 -- PROGRAMMER:	Ruoqi Jia
 --
 -- NOTES: Contains the logical functionalities of the server sided service for TCP and UDP connections.
@@ -53,6 +53,8 @@ BOOL						EndOfTransmission = FALSE;	/* Indicates EOT										*/
 TRANSMISSION_INFORMATION	TransInfo;					/* Pack statistics for one tranmission					*/
 FILE *						fp;							/* File descriptor for writing packets					*/
 WSAEVENT					TimerEvent;					/* Event that is checked periodically for I/O status	*/
+WSAEVENT					CircularEvent;				/* Event that is checked everytime UDP recieves data	*/
+CircularBuffer CircularBuff;	/* Circular buffer to prevent stack overflow on UDP recieve	*/
 
 /*------------------------------------------------------------------------------------------------------------------
 -- FUNCTION:	ServerManager
@@ -80,6 +82,7 @@ void ServerManager(WPARAM wParam)
 	/* Connect button is pressed */
 	if (LOWORD(wParam) == IDC_SEND && HIWORD(wParam) == BN_CLICKED)
 	{
+		memset(&TransInfo, 0, sizeof(TransInfo));
 
 		/* If file descriptor is already open, close it*/
 		if(fp != NULL)
@@ -125,6 +128,7 @@ void Server()
 	DWORD		AcceptThreadID;		/* Thread ID for accept thread		*/
 	DWORD		ServerThreadID;		/* Thread ID for worker thread		*/
 	DWORD		Ret;				/* Return value for session info	*/
+
 	/* Create a WSA v2.2 session */
 	if ((Ret = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0)
 	{
@@ -266,12 +270,18 @@ DWORD WINAPI AcceptThread(LPVOID lpParameter)
 --------------------------------------------------------------------------------------------------------------------*/
 DWORD WINAPI UDPThread(LPVOID lpParameter)
 {
-	LPSOCKET_INFORMATION	SocketInfo;		/* Socket information for a packet			*/
-	DWORD					RecvBytes;		/* Actual bytes recived from recvfrom()		*/			
-	DWORD					TimerThreadID;	/* ID for the TimerThread					*/
-	
+	LPSOCKET_INFORMATION	SocketInfo;			/* Socket information for a packet			*/
+	DWORD					RecvBytes;			/* Actual bytes recived from recvfrom()		*/			
+	DWORD					TimerThreadID;		/* ID for the TimerThread					*/
+	DWORD					CircularThreadID;	/* ID for circularIO thread					*/	
+
+	/* Initialize circular buffer to be size of ten */
+	CBInitialize(&CircularBuff, 100, sizeof(SOCKET_INFORMATION));
+
 	/* Create a dummy WSA event for the timer thread to listens for IO events */
 	TimerEvent = WSACreateEvent();
+	
+	CircularEvent = WSACreateEvent();
 
 	/* Open empty file for writing */
 	fp = fopen("ouput.txt", "w");
@@ -301,6 +311,8 @@ DWORD WINAPI UDPThread(LPVOID lpParameter)
 	/* Create the TimerThread to keep track of missing packets */
 	CreateThread(NULL, 0, TimerThread, (LPVOID)SocketInfo, 0, &TimerThreadID);
 
+	CreateThread(NULL, 0, CircularIO, NULL, 0, &CircularThreadID);
+
 	while (TRUE)
 	{
 		/* Post an asynchrounous recieve request, supply ServerRoutine as the completion routine function */
@@ -322,8 +334,9 @@ DWORD WINAPI UDPThread(LPVOID lpParameter)
 			break;
 		}
 
-		/* Update tranmission info value */
-		UpdateTransmission(&TransInfo, RecvBytes, SocketInfo);
+		CircularBuff.BytesRECV = RecvBytes;
+		CBPushBack(&CircularBuff, SocketInfo);
+		WSASetEvent(CircularEvent);
 
 	}
 	AppendToStatus(hStatus, "Ending Server Thread\n");
@@ -339,7 +352,6 @@ DWORD WINAPI UDPThread(LPVOID lpParameter)
 
 	/* Free socket and close session */
 	GlobalFree(SocketInfo);
-	memset(&TransInfo, 0, sizeof(TransInfo));
 	WSACleanup();
 
 	return TRUE;
@@ -400,15 +412,17 @@ DWORD WINAPI TCPThread(LPVOID lpParameter)
 			/* Indicates that last packet has been recieved from ServerRoutine() */
 			if (Index == WAIT_IO_COMPLETION && EndOfTransmission)
 			{
-				if (SocketInfo->BytesRECV > 0)				/* If threre are remaining bytes left	*/
-					TransInfo.PacketsRECV++;				/* Count it as a packet					*/
-				EndOfTransmission = FALSE;					/* Reset flag							*/
-				closesocket(SocketInfo->Socket);			/* Close current socket					*/
-				memset(&TransInfo, 0, sizeof(TransInfo));	/* Zero out transmission struct			*/
-				WSACleanup();								/* Close Winsock Session				*/
-				fclose(fp);									/* Close file descriptor				*/
+				if (SocketInfo->BytesRECV > 0)					/* If threre are remaining bytes left	*/
+				{
+					SendMessage(hProgress, PBM_STEPIT, 0, 0);	/* Increment progress bar */
+					TransInfo.PacketsRECV++;					/* Count it as a packet					*/
+				}
+				EndOfTransmission = FALSE;						/* Reset flag							*/
+				closesocket(SocketInfo->Socket);				/* Close current socket					*/
+				memset(&TransInfo, 0, sizeof(TransInfo));		/* Zero out transmission struct			*/
+				WSACleanup();									/* Close Winsock Session				*/
+				fclose(fp);										/* Close file descriptor				*/
 				AppendToStatus(hStatus, "Ending Server Thread\n");
-				SendMessage(hProgress, PBM_STEPIT, 0, 0);	/* Increment progress bar */
 				return TRUE;
 			}
 		}
@@ -626,5 +640,33 @@ DWORD WINAPI TimerThread(LPVOID lpParameter)
 		}
 		WSAResetEvent(e[0]);
 	}
+	return TRUE;
+}
+
+DWORD WINAPI CircularIO(LPVOID lpParameter)
+{
+	LPSOCKET_INFORMATION tmp = (LPSOCKET_INFORMATION)malloc(sizeof(SOCKET_INFORMATION));
+	DWORD ret;
+	WSAEVENT e[1];
+	e[0] = CircularEvent;
+	while (TRUE)
+	{
+		ret = WSAWaitForMultipleEvents(1, e, FALSE, 100, FALSE);
+		if (ret == WSA_WAIT_TIMEOUT)
+		{
+			free(tmp);
+			return FALSE;
+		}
+		if(ret != WAIT_IO_COMPLETION)
+		{
+			while (CircularBuff.Count != 0)
+			{
+				CBPop(&CircularBuff, tmp);
+				UpdateTransmission(&TransInfo, CircularBuff.BytesRECV, tmp);
+				ResetEvent(CircularEvent);
+			}
+		}
+	}
+	free(tmp);
 	return TRUE;
 }

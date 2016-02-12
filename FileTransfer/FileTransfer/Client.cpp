@@ -275,12 +275,6 @@ DWORD WINAPI ClientThread(LPVOID lpParameter)
 
 	TotalBytes = atoi(PacketSize) * atoi(SendTimes);
 
-	/* Wait a little bit for the server to process incoming packets before closing the socket */
-	Sleep(TotalBytes * 0.0001);
-
-	/* Close the socket */
-	closesocket(SocketInfo->Socket);
-
 	AppendToStatus(hStatus, "End of Transmission...Closing session\n");
 	return TRUE;
 }

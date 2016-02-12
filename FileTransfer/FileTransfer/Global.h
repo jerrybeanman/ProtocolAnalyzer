@@ -12,7 +12,7 @@
 #define HOST_INPUT		106
 #define MAXBUF			256
 #define DEFAULT_PORT	7000
-#define DATA_BUFSIZE	100000
+#define DATA_BUFSIZE	60000
 #define FILE_NAME		TEXT("WarAndPeace")
 #define PORT_NUMBER		TEXT("7000")
 #define PACKET_SIZE		TEXT("60000")
@@ -31,6 +31,8 @@
 #include <iostream>
 #include <commctrl.h>
 #include <time.h>
+
+extern HWND hStatus;				/* Handle to status text field		*/
 
 typedef struct _SOCKET_INFORMATION 
 {
@@ -51,7 +53,9 @@ typedef struct _TRANSMISSION_INFORMATION
 	SYSTEMTIME EndTimeStamp;
 	LPSTR ProtocolType;
 } TRANSMISSION_INFORMATION, *LPTRANSMISSION_INFORMATION;
+
 #include "MenuController.h"
+#include "CircularBuffer.h"
 #include "SocketHelper.h"
 #include "Client.h"
 #include "Server.h"
@@ -81,7 +85,6 @@ extern HWND hUDP;					/* Handle to Hostnam editfield		*/
 extern HWND hPort;					/* Handle to port number editfield  */
 extern HWND hPSize;					/* Handle to packet size editfield  */
 extern HWND hPNum;					/* Handle to number of packets		*/
-extern HWND hStatus;				/* Handle to status text field		*/
 extern HWND hFilename;				/* Handle to file name text field	*/
 extern HWND hOpenFile;				/* Handle to open file button		*/
 extern HWND hSendFile;				/* Handle to send file button		*/
