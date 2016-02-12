@@ -4,21 +4,21 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS 
 #define _CRT_SECURE_NO_WARNINGS
 
-#define SERVER_MODE		101
-#define CLIENT_MODE		102
-#define TCP				103
-#define UDP				104
-#define IP_INPUT		105
-#define HOST_INPUT		106
-#define MAXBUF			256
-#define DEFAULT_PORT	7000
-#define DATA_BUFSIZE	60000
-#define FILE_NAME		TEXT("WarAndPeace")
-#define PORT_NUMBER		TEXT("7000")
-#define PACKET_SIZE		TEXT("60000")
-#define SEND_TIMES		TEXT("100")
-#define IP_ADDRESS		TEXT("192.168.1.67")
-
+#define SERVER_MODE			101
+#define CLIENT_MODE			102
+#define TCP					103
+#define UDP					104
+#define IP_INPUT			105
+#define HOST_INPUT			106
+#define MAXBUF				256
+#define DEFAULT_PORT		7000
+#define DATA_BUFSIZE		60000
+#define FILE_NAME			TEXT("WarAndPeace")
+#define PORT_NUMBER			TEXT("7000")
+#define PACKET_SIZE			TEXT("60000")
+#define SEND_TIMES			TEXT("100")
+#define IP_ADDRESS			TEXT("192.168.1.67")
+#define CIRCULAR_BUF_SIZE	60
 #include <iostream>
 #include <sstream>
 #include <math.h>

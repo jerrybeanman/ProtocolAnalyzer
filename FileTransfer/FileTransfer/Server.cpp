@@ -276,7 +276,7 @@ DWORD WINAPI UDPThread(LPVOID lpParameter)
 	DWORD					CircularThreadID;	/* ID for circularIO thread					*/	
 
 	/* Initialize circular buffer to be size of ten */
-	CBInitialize(&CircularBuff, 100, sizeof(SOCKET_INFORMATION));
+	CBInitialize(&CircularBuff, CIRCULAR_BUF_SIZE, sizeof(SOCKET_INFORMATION));
 
 	/* Create a dummy WSA event for the timer thread to listens for IO events */
 	TimerEvent = WSACreateEvent();
@@ -343,7 +343,6 @@ DWORD WINAPI UDPThread(LPVOID lpParameter)
 
 	/* End system timer and print out transmission info */
 	GetSystemTime(&TransInfo.EndTimeStamp);
-	PrintTransmission(&TransInfo);
 
 	SendMessage(hProgress, PBM_STEPIT, 0, 0);	/* Increment progress bar */
 
@@ -654,6 +653,8 @@ DWORD WINAPI CircularIO(LPVOID lpParameter)
 		ret = WSAWaitForMultipleEvents(1, e, FALSE, 100, FALSE);
 		if (ret == WSA_WAIT_TIMEOUT)
 		{
+			PrintTransmission(&TransInfo);
+			CBFree(&CircularBuff);
 			free(tmp);
 			return FALSE;
 		}
