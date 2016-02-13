@@ -91,7 +91,8 @@ void ServerManager(WPARAM wParam)
 		/* CLose current session incase it's already opened */
 		WSACleanup();
 
-		SetWindowText(hStatus, "Server Initialized...\n");
+		sprintf(StrBuff, "%s Server Initialized...\n", CurrentProtocol == TCP ? "TCP" : "UDP");
+		SetWindowText(hStatus, StrBuff);
 
 		/* Reset progress bar */
 		SendMessage(hProgress, PBM_SETPOS, 0, 0);
@@ -413,7 +414,6 @@ DWORD WINAPI TCPThread(LPVOID lpParameter)
 			{
 				if (SocketInfo->BytesRECV > 0)					/* If threre are remaining bytes left	*/
 				{
-					SendMessage(hProgress, PBM_STEPIT, 0, 0);	/* Increment progress bar */
 					TransInfo.PacketsRECV++;					/* Count it as a packet					*/
 				}
 				EndOfTransmission = FALSE;						/* Reset flag							*/

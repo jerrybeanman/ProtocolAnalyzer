@@ -17,8 +17,8 @@
 #define PORT_NUMBER			TEXT("7000")
 #define PACKET_SIZE			TEXT("60000")
 #define SEND_TIMES			TEXT("100")
-#define IP_ADDRESS			TEXT("192.168.1.67")
-#define CIRCULAR_BUF_SIZE	60
+#define IP_ADDRESS			TEXT("142.232.50.80")
+#define CIRCULAR_BUF_SIZE	400
 #include <iostream>
 #include <sstream>
 #include <math.h>

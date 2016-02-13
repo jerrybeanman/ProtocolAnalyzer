@@ -5,12 +5,12 @@ struct CircularBuffer
 {
 	void	*	buffer;			/* data buffer								*/
 	void	*	buffer_end;		/* end of data buffer						*/
-	DWORD	MaxSize;		/* maximum number of items in the buffer	*/
-	DWORD	Count;			/* number of items in the buffer			*/
-	DWORD	ElementSize;	/* size of each item in the buffer			*/
+	DWORD		MaxSize;		/* maximum number of items in the buffer	*/
+	DWORD		Count;			/* number of items in the buffer			*/
+	DWORD		ElementSize;	/* size of each item in the buffer			*/
 	void	*	Front;			/* pointer to Front							*/
 	void	*	Rear;			/* pointer to Rear							*/
-	DWORD	BytesRECV;		/* Number of bytes recieved					*/
+	DWORD		BytesRECV;		/* Number of bytes recieved					*/
 };
 
 
