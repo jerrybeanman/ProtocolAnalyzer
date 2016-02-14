@@ -288,9 +288,6 @@ void UpdateTransmission(LPTRANSMISSION_INFORMATION TRANS_INFO, DWORD BytesReciev
 	/* Check if we have enough bytes to fill up a packet */
 	int Result = (int)(SOCKET_INFO->BytesRECV / TRANS_INFO->PacketSize);
 
-	sprintf(StrBuff, "Data recieved! Size: %d\n", BytesRecieved);
-	AppendToStatus(hStatus, StrBuff);
-
 	/* If bytes recieved is greater than a packet length */
 	if (Result > 0)
 	{
@@ -325,12 +322,15 @@ void UpdateTransmission(LPTRANSMISSION_INFORMATION TRANS_INFO, DWORD BytesReciev
 --------------------------------------------------------------------------------------------------------------------*/
 void PrintTransmission(LPTRANSMISSION_INFORMATION TRANS_INFO)
 {
+	long d = delay(TRANS_INFO->StartTimeStamp, TRANS_INFO->EndTimeStamp);
+	DWORD tBytes = TRANS_INFO->PacketsRECV * TRANS_INFO->PacketSize;
+	float datarate = ((float)((float)tBytes / (float)1000000) / (float)((float)d / (float)1000));
 	AppendToStatus(hStatus, "**************************************************\n");
-	sprintf(StrBuff, "Starting Time Stamp: %d\n", TRANS_INFO->StartTimeStamp.wMilliseconds);
+	sprintf(StrBuff, "Starting Time Stamp: %lld \n", TRANS_INFO->StartTimeStamp.QuadPart);
 	AppendToStatus(hStatus, StrBuff);
-	sprintf(StrBuff, "Ending Time Stamp: %d\n", TRANS_INFO->StartTimeStamp.wMilliseconds);
+	sprintf(StrBuff, "Ending Time Stamp: %lld \n", TRANS_INFO->EndTimeStamp.QuadPart);
 	AppendToStatus(hStatus, StrBuff);
-	sprintf(StrBuff, "Delay: %d\n", delay(TRANS_INFO->StartTimeStamp, TRANS_INFO->EndTimeStamp));
+	sprintf(StrBuff, "Delay: %d ms\n", d);
 	AppendToStatus(hStatus, StrBuff);
 	sprintf(StrBuff, "Packet size: %d\n", TRANS_INFO->PacketSize);
 	AppendToStatus(hStatus, StrBuff);
@@ -338,7 +338,9 @@ void PrintTransmission(LPTRANSMISSION_INFORMATION TRANS_INFO)
 	AppendToStatus(hStatus, StrBuff);
 	sprintf(StrBuff, "Packets Recieved: %d\n", TRANS_INFO->PacketsRECV);
 	AppendToStatus(hStatus, StrBuff);
-	sprintf(StrBuff, "Total Bytes Recieved: %d\n", TRANS_INFO->PacketsRECV * TRANS_INFO->PacketSize);
+	sprintf(StrBuff, "Total Bytes Recieved: %d bytes\n", tBytes);
+	AppendToStatus(hStatus, StrBuff);
+	sprintf(StrBuff, "Data Rate: %.2f mb/s \n", datarate);
 	AppendToStatus(hStatus, StrBuff);
 	AppendToStatus(hStatus, "**************************************************\n");
 
@@ -371,9 +373,9 @@ void WriteTransmission(LPTRANSMISSION_INFORMATION TRANS_INFO, char * FileName)
 	fp = fopen(FileName, "a");
 	fprintf(fp, "**************************************************\n");
 	fprintf(fp, "		TIME: %d-%d-%d, %d:%d:%d\n\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-	fprintf(fp, "Starting Time Stamp: %d\n", TRANS_INFO->StartTimeStamp.wMilliseconds);
-	fprintf(fp, "Ending Time Stamp: %d\n", TRANS_INFO->StartTimeStamp.wMilliseconds);
-	fprintf(fp, "Delay: %d\n", delay(TRANS_INFO->StartTimeStamp, TRANS_INFO->EndTimeStamp));
+	fprintf(fp, "Starting Time Stamp: %d\n ms", TRANS_INFO->StartTimeStamp.QuadPart * 1000);
+	fprintf(fp, "Ending Time Stamp: %d\n ms", TRANS_INFO->StartTimeStamp.QuadPart * 1000);
+	fprintf(fp, "Delay: %d\n ms", delay(TRANS_INFO->StartTimeStamp, TRANS_INFO->EndTimeStamp));
 	fprintf(fp, "Packet size: %d\n", TRANS_INFO->PacketSize);
 	fprintf(fp, "Packets Expected: %d\n", TRANS_INFO->PacketsExpected);
 	fprintf(fp, "Packets Recieved: %d\n", TRANS_INFO->PacketsRECV);
@@ -402,11 +404,10 @@ void WriteTransmission(LPTRANSMISSION_INFORMATION TRANS_INFO, char * FileName)
 --
 -- NOTES: Compute the delay between tl and t2 in milliseconds
 --------------------------------------------------------------------------------------------------------------------*/
-long delay(SYSTEMTIME t1, SYSTEMTIME t2)
+long delay(LARGE_INTEGER t1, LARGE_INTEGER t2)
 {
-	long d;
-
-	d = (t2.wSecond - t1.wSecond) * 1000;
-	d += (t2.wMilliseconds - t1.wMilliseconds);
-	return(d);
+	double elapsedTime;
+	// compute and print the elapsed time in millisec
+	elapsedTime = (t2.QuadPart - t1.QuadPart) * 1000.0 / Frequency.QuadPart;
+	return(elapsedTime);
 }

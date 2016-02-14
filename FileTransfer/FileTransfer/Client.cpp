@@ -249,7 +249,7 @@ DWORD WINAPI ClientThread(LPVOID lpParameter)
 	{
 		/* Calculate number of packets that will be sent */
 		fseek(fp, 0L, SEEK_END);
-		int tmp = ceil((double)(ftell(fp) / (double)atoi(PacketSize)));
+		int tmp = (ftell(fp) / atoi(PacketSize));
 		fseek(fp, 0L, SEEK_SET);
 		
 		/* Set progress bar range			*/
@@ -277,7 +277,7 @@ DWORD WINAPI ClientThread(LPVOID lpParameter)
 
 	if (CurrentProtocol == TCP)
 	{
-		Sleep(TotalBytes * 0.0001);
+		Sleep(TotalBytes * 0.00015);
 		closesocket(SocketInfo->Socket);
 	}
 	AppendToStatus(hStatus, "End of Transmission...Closing session\n");
@@ -363,9 +363,6 @@ void SendFile(LPSOCKET_INFORMATION SOCKET_INFO, DWORD PacketSize)
 		SOCKET_INFO->DataBuf.buf = pbuf;
 		SOCKET_INFO->DataBuf.len = FBytesRead;
 
-		sprintf(StrBuff, "Sending File Packet... Size:  %d\n", FBytesRead);
-		AppendToStatus(hStatus, StrBuff);
-
 		/* Different send methods based on the current protocol */
 		if ((CurrentProtocol == TCP ? S_TCPSend(SOCKET_INFO) :
 			S_UDPSend(SOCKET_INFO, &InternetAddr)) == FALSE)
@@ -414,10 +411,7 @@ void SendDummyPackets(LPSOCKET_INFORMATION SOCKET_INFO, DWORD Total, DWORD Packe
 	/* Keep on sending the dummy packet to the socket */
 	for (int i = 0; i < Total; i++)
 	{
-		SendMessage(hProgress, PBM_DELTAPOS, 10, 0);	/* Increment progress bar */
-
-		sprintf(StrBuff, "Sending Packet... Size:  %d\n", strlen(SOCKET_INFO->DataBuf.buf));
-		AppendToStatus(hStatus, StrBuff);
+	//	SendMessage(hProgress, PBM_DELTAPOS, 10, 0);	/* Increment progress bar */
 
 		/* Different send methods based on the current protocol */
 		if ((CurrentProtocol == TCP ? S_TCPSend(SOCKET_INFO) :

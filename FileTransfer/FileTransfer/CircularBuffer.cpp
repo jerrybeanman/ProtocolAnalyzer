@@ -22,10 +22,11 @@ void CBFree(CircularBuffer * CBuff)
 
 void CBPushBack(CircularBuffer * CBuff, const void *item)
 {
-	if (CBuff->Count == CBuff->MaxSize)
+	/* Comment this out if we want the head to overwirte the tail */
+	/*if (CBuff->Count == CBuff->MaxSize)
 	{
 		return;
-	}
+	}*/
 	memcpy(CBuff->Front, item, CBuff->ElementSize);
 	CBuff->Front = (char *)CBuff->Front +  CBuff->ElementSize;
 	if (CBuff->Front == CBuff->buffer_end)

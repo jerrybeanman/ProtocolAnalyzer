@@ -55,6 +55,7 @@ FILE *						fp;							/* File descriptor for writing packets					*/
 WSAEVENT					TimerEvent;					/* Event that is checked periodically for I/O status	*/
 WSAEVENT					CircularEvent;				/* Event that is checked everytime UDP recieves data	*/
 CircularBuffer CircularBuff;	/* Circular buffer to prevent stack overflow on UDP recieve	*/
+LARGE_INTEGER				Frequency;
 
 /*------------------------------------------------------------------------------------------------------------------
 -- FUNCTION:	ServerManager
@@ -82,6 +83,7 @@ void ServerManager(WPARAM wParam)
 	/* Connect button is pressed */
 	if (LOWORD(wParam) == IDC_SEND && HIWORD(wParam) == BN_CLICKED)
 	{
+		QueryPerformanceFrequency(&Frequency);
 		memset(&TransInfo, 0, sizeof(TransInfo));
 
 		/* If file descriptor is already open, close it*/
@@ -307,7 +309,7 @@ DWORD WINAPI UDPThread(LPVOID lpParameter)
 	GetInitialMessage(SocketInfo);
 
 	/* Start counting system timer */
-	GetSystemTime(&TransInfo.StartTimeStamp);
+	QueryPerformanceCounter(&TransInfo.StartTimeStamp);
 
 	/* Create the TimerThread to keep track of missing packets */
 	CreateThread(NULL, 0, TimerThread, (LPVOID)SocketInfo, 0, &TimerThreadID);
@@ -338,20 +340,21 @@ DWORD WINAPI UDPThread(LPVOID lpParameter)
 		CircularBuff.BytesRECV = RecvBytes;
 		CBPushBack(&CircularBuff, SocketInfo);
 		WSASetEvent(CircularEvent);
-
+		TransInfo.PacketsRECV++;
 	}
 	AppendToStatus(hStatus, "Ending Server Thread\n");
 
 	/* End system timer and print out transmission info */
-	GetSystemTime(&TransInfo.EndTimeStamp);
+	QueryPerformanceCounter(&TransInfo.EndTimeStamp);
 
 	SendMessage(hProgress, PBM_STEPIT, 0, 0);	/* Increment progress bar */
+
+	PrintTransmission(&TransInfo);
 
 	/* CLose the socket */
 	closesocket(SocketInfo->Socket);
 
 	/* Free socket and close session */
-	GlobalFree(SocketInfo);
 	WSACleanup();
 
 	return TRUE;
@@ -414,7 +417,7 @@ DWORD WINAPI TCPThread(LPVOID lpParameter)
 			{
 				if (SocketInfo->BytesRECV > 0)					/* If threre are remaining bytes left	*/
 				{
-					TransInfo.PacketsRECV++;					/* Count it as a packet					*/
+					TransInfo.PacketsRECV += ceil(SocketInfo->BytesRECV / TransInfo.PacketSize);	
 				}
 				EndOfTransmission = FALSE;						/* Reset flag							*/
 				closesocket(SocketInfo->Socket);				/* Close current socket					*/
@@ -505,7 +508,7 @@ void CALLBACK ServerRoutine(DWORD Error, DWORD BytesTransferred,
 	if (BytesTransferred == 0 || SI->Buffer[0] == '\0')
 	{
 		AppendToStatus(hStatus, "Closing Socket\n");
-		GetSystemTime(&TransInfo.EndTimeStamp);			/* Get the ending time stamp for this transmission	*/
+		QueryPerformanceCounter(&TransInfo.EndTimeStamp);			/* Get the ending time stamp for this transmission	*/
 		EndOfTransmission = TRUE;						/* Indicate end of transmission packet				*/
 		PrintTransmission(&TransInfo);					/* Print out statistics								*/
 		return;
@@ -521,7 +524,7 @@ void CALLBACK ServerRoutine(DWORD Error, DWORD BytesTransferred,
 		AppendToStatus(hStatus, StrBuff);
 		SendMessage(hProgress, PBM_SETRANGE, 0, MAKELPARAM(0, TransInfo.PacketsExpected * 10));
 		/* Get the starting time stamp for this transmisssion */
-		GetSystemTime(&TransInfo.StartTimeStamp);
+		QueryPerformanceCounter(&TransInfo.StartTimeStamp);
 	}
 	else
 	{
@@ -644,6 +647,7 @@ DWORD WINAPI TimerThread(LPVOID lpParameter)
 
 DWORD WINAPI CircularIO(LPVOID lpParameter)
 {
+	int c = 0;
 	LPSOCKET_INFORMATION tmp = (LPSOCKET_INFORMATION)malloc(sizeof(SOCKET_INFORMATION));
 	DWORD ret;
 	WSAEVENT e[1];
@@ -653,9 +657,9 @@ DWORD WINAPI CircularIO(LPVOID lpParameter)
 		ret = WSAWaitForMultipleEvents(1, e, FALSE, 100, FALSE);
 		if (ret == WSA_WAIT_TIMEOUT)
 		{
-			PrintTransmission(&TransInfo);
 			CBFree(&CircularBuff);
 			free(tmp);
+			fclose(fp);
 			return FALSE;
 		}
 		if(ret != WAIT_IO_COMPLETION)
@@ -663,8 +667,11 @@ DWORD WINAPI CircularIO(LPVOID lpParameter)
 			while (CircularBuff.Count != 0)
 			{
 				CBPop(&CircularBuff, tmp);
-				UpdateTransmission(&TransInfo, CircularBuff.BytesRECV, tmp);
+				SendMessage(hProgress, PBM_DELTAPOS, 10, 0);	/* Increment progress bar */
+				/* Write the packet content to a output file */
+				fwrite(tmp->DataBuf.buf, sizeof(char), tmp->DataBuf.len, fp);
 				ResetEvent(CircularEvent);
+				c++;
 			}
 		}
 	}

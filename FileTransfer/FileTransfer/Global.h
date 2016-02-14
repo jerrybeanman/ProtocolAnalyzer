@@ -17,8 +17,8 @@
 #define PORT_NUMBER			TEXT("7000")
 #define PACKET_SIZE			TEXT("60000")
 #define SEND_TIMES			TEXT("100")
-#define IP_ADDRESS			TEXT("142.232.50.80")
-#define CIRCULAR_BUF_SIZE	400
+#define IP_ADDRESS			TEXT("142.232.50.18")
+#define CIRCULAR_BUF_SIZE	500
 #include <iostream>
 #include <sstream>
 #include <math.h>
@@ -49,8 +49,8 @@ typedef struct _TRANSMISSION_INFORMATION
 	DWORD PacketSize;
 	DWORD PacketsExpected;
 	DWORD PacketsRECV;
-	SYSTEMTIME StartTimeStamp;
-	SYSTEMTIME EndTimeStamp;
+	LARGE_INTEGER StartTimeStamp;
+	LARGE_INTEGER EndTimeStamp;
 	LPSTR ProtocolType;
 } TRANSMISSION_INFORMATION, *LPTRANSMISSION_INFORMATION;
 
@@ -67,6 +67,7 @@ extern DWORD CurrentMode;				/* Current mode selected (Client or Server)		*/
 extern DWORD CurrentSelectedInputType;	/* Current input type selected (IP or hostname)	*/
 extern DWORD CurrentProtocol;			/* Current protocol selected (TCP or UDP)		*/
 
+extern LARGE_INTEGER	Frequency;
 
 extern char str[526];
 extern char * StrBuff;

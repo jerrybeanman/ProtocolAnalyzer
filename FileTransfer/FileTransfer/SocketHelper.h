@@ -234,4 +234,4 @@ void WriteTransmission(LPTRANSMISSION_INFORMATION TRANS_INFO, char * FileName);
 --
 -- NOTES: Compute the delay between tl and t2 in milliseconds
 --------------------------------------------------------------------------------------------------------------------*/
-long delay(SYSTEMTIME t1, SYSTEMTIME t2);
+long delay(LARGE_INTEGER t1, LARGE_INTEGER t2);
