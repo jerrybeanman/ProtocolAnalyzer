@@ -17,7 +17,7 @@
 #define PORT_NUMBER			TEXT("7000")
 #define PACKET_SIZE			TEXT("60000")
 #define SEND_TIMES			TEXT("100")
-#define IP_ADDRESS			TEXT("142.232.50.18")
+#define IP_ADDRESS			TEXT("192.168.0.23")
 #define CIRCULAR_BUF_SIZE	500
 #include <iostream>
 #include <sstream>
@@ -36,7 +36,7 @@ extern HWND hStatus;				/* Handle to status text field		*/
 
 typedef struct _SOCKET_INFORMATION 
 {
-	OVERLAPPED Overlapped;
+	WSAOVERLAPPED Overlapped;
 	SOCKET Socket;
 	CHAR Buffer[DATA_BUFSIZE];
 	WSABUF DataBuf;

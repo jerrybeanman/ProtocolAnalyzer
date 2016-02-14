@@ -312,22 +312,42 @@ DWORD WINAPI UDPThread(LPVOID lpParameter)
 	QueryPerformanceCounter(&TransInfo.StartTimeStamp);
 
 	/* Create the TimerThread to keep track of missing packets */
-	CreateThread(NULL, 0, TimerThread, (LPVOID)SocketInfo, 0, &TimerThreadID);
+	//CreateThread(NULL, 0, TimerThread, (LPVOID)SocketInfo, 0, &TimerThreadID);
 
+	SocketInfo->Overlapped.hEvent = WSACreateEvent();
 	CreateThread(NULL, 0, CircularIO, NULL, 0, &CircularThreadID);
-
+	int i;
+	DWORD Flags = 0;
+	SOCKADDR_IN  client;
+	int client_len = sizeof(client);
 	while (TRUE)
 	{
-		/* Post an asynchrounous recieve request, supply ServerRoutine as the completion routine function */
-		if (S_UDPRecieve(SocketInfo, TRUE, &RecvBytes) == FALSE)
-		{
-			sprintf(StrBuff, "recvfrom() failed with error %d\n", GetLastError());
-			AppendToStatus(hStatus, StrBuff);
-			return FALSE;
-		}
+		DWORD Flags = 0;
+		SOCKADDR_IN  client;
+		int client_len = sizeof(client);
 
+		if ((i = WSARecvFrom(SocketInfo->Socket,	/* Accepted socket					*/
+			&(SocketInfo->DataBuf),					/* Message buffer to recieve		*/
+			1,										/* Maximum data to recieve			*/
+			&RecvBytes,								/* No modification					*/
+			&Flags,
+			(SOCKADDR *)&client,					/* Server socket address structure		*/
+			&client_len,
+			&SocketInfo->Overlapped,
+			NULL))									/* size of the socket address structure	*/
+			== SOCKET_ERROR)
+		{
+			if (WSAGetLastError() != WSA_IO_PENDING)
+			{
+				sprintf(StrBuff, "GlobalAlloc() failed with error %d\n", WSAGetLastError());
+				AppendToStatus(hStatus, StrBuff);
+				return FALSE;
+			}
+			if (WSAWaitForMultipleEvents(1, &SocketInfo->Overlapped.hEvent, FALSE, 100, FALSE) == WAIT_TIMEOUT)
+				break;
+		}
 		/* Signal packet read to the Timer thread */
-		WSASetEvent(TimerEvent);
+		//WSASetEvent(TimerEvent);
 
 		/* Last Packet recieved */
 		if (SocketInfo->Buffer[0] == '\0' || RecvBytes == 0 || RecvBytes == UINT_MAX)
